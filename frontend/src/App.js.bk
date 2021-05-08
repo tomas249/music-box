@@ -1,0 +1,67 @@
+import { useEffect, useState, Suspense, lazy, useContext } from 'react';
+import { Redirect } from 'react-router-dom';
+import { identify } from './api/AuthApi';
+import { setBearerToken } from './api/Api';
+import LoadingComponent from './components/LoadingComponent';
+import UserContext from './contexts/UserContext';
+
+const UserProvider = (Component) =>
+  function () {
+    const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState({ access: { allow: false } });
+
+    useEffect(() => {
+      identify()
+        .then((session) => {
+          session.user && setSession(session);
+        })
+        .catch((err) => {
+          console.log(err.errorCode);
+        })
+        .finally(() => setLoading(false));
+    }, []);
+
+    const setSession = ({ accessToken, user, exp }) => {
+      setUser(user);
+      setBearerToken(accessToken);
+    };
+
+    return (
+      <LoadingComponent loading={loading}>
+        <UserContext.Provider value={{ user, setUser }}>
+          <Component user={user} setSession={setSession} />
+        </UserContext.Provider>
+      </LoadingComponent>
+    );
+  };
+
+const App = ({ user, setSession }) => {
+  const AuthRouter = lazy(() => import('./pages/auth/AuthRouter'));
+  const MainRouter = lazy(() => import('./pages/main/MainRouter'));
+
+  // User exists and access allowed
+  if (user?.access.allow) {
+    return (
+      <Suspense fallback={null}>
+        <MainRouter user={user} setSession={setSession} />
+      </Suspense>
+    );
+  } else {
+    return (
+      <Suspense fallback={null}>
+        {/* Redirect to change account if first loggin */}
+        {user?.access.reason === 'setup_account' && (
+          <Redirect
+            to={{
+              pathname: '/auth',
+              state: { useFragment: 'setupAccount', user },
+            }}
+          />
+        )}
+        <AuthRouter user={user} setSession={setSession} />
+      </Suspense>
+    );
+  }
+};
+
+export default UserProvider(App);

@@ -5,7 +5,8 @@ body {
     'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #181818;
+  background-color: #121212;
+  color: white;
 }
 
 code {
@@ -23,4 +24,19 @@ body {
 
 .primary {
   color: rgb(102, 102, 102);
+}
+
+:root {
+  --item-background: #181818;
+  --item-hover-background: #181818;
+  --green: #1db954;
+  --green-hover: #0ea543;
+}
+
+.no-scroll-bars {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.no-scroll-bars::-webkit-scrollbar {
+  display: none;
 }

@@ -13,7 +13,7 @@ const Input = ({
   return (
     <>
       <InputStyled
-        spellcheck="off"
+        spellcheck='off'
         autoFocus={autofocus}
         disabled={disabled}
         type={type}

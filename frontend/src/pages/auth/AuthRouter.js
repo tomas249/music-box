@@ -1,24 +1,19 @@
 import { Route, Switch, Redirect } from 'react-router-dom';
 import AuthPage from './AuthPage';
 
-const AuthRouter = ({ setSession, token }) => {
+const AuthRouter = () => {
   return (
     <Switch>
+      <Route exact path='/auth' component={AuthPage} />
       <Route
         exact
-        path="/auth"
-        render={(props) => <AuthPage {...props} token={token} setSession={setSession} />}
-      />
-      <Route
-        exact
-        path="/invite/:key"
+        path='/invite/:key'
         render={({ match }) => (
           <Redirect
-            from="/invite/:key"
             to={{
               pathname: '/auth',
               state: {
-                useFragment: 'confirmInvitation',
+                initFragment: 'confirmInvitation',
                 key: match.params.key,
                 invitation: true,
               },
@@ -26,12 +21,7 @@ const AuthRouter = ({ setSession, token }) => {
           />
         )}
       />
-      <Redirect
-        to={{
-          pathname: '/auth',
-          state: { useFragment: 'access' },
-        }}
-      />
+      <Redirect to={{ pathname: '/auth', state: { initFragment: 'keyAccess' } }} />
     </Switch>
   );
 };

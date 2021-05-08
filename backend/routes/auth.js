@@ -3,9 +3,9 @@ const router = require('express').Router();
 const verifyToken = require('../middleware/verifyToken');
 const authCtrl = require('../controllers/auth');
 
-router.post('/invitation', verifyToken({ acceptBypass: false }), authCtrl.createInvitation);
 router.get('/invitation/:key', authCtrl.getInvitation);
 router.post('/invitation/confirm', authCtrl.confirmInvitation);
+router.post('/invitation', verifyToken({ acceptBypass: false }), authCtrl.createInvitation);
 router.post('/changePassword', verifyToken({ acceptBypass: true }), authCtrl.changePassword);
 router.post('/login', authCtrl.login);
 router.post('/register', authCtrl.register);

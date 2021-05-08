@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('../middleware/async');
+const Collection = require('./Collection');
+const ErrorResponse = require('../utils/errorResponse');
 
 const UserSchema = new mongoose.Schema(
   {
@@ -49,71 +51,60 @@ const UserSchema = new mongoose.Schema(
       reason: String,
       message: String,
     },
+    collections: {
+      tracks: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Collection',
+      },
+      playlists: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Collection',
+      },
+      albums: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Collection',
+      },
+      artists: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Collection',
+      },
+    },
   },
   { timestamps: true }
 );
 
-// Generate random id
-const generateUsername = (name) => {
-  /**
-   * Output: name0000X (name + 4 integers + 1 letter)
-   */
-  // First part from timestamp
-  const id = Date.now().toString().substr(-4);
-  // Second part from random numbers
-  const randNumber = Math.round(Math.random() * (90 - 65) + 65);
-  // Username ends with a letter
-  const end = String.fromCharCode(randNumber);
-  // Concatonate and return
-  return name.trim().toLowerCase().split(' ')[0] + id + end;
-};
+UserSchema.pre('save', async function (next) {
+  if (this.isNew) {
+    // Create liked songs collection
+    const likedSongs = await Collection.create({
+      type: 'track',
+      name: 'Liked Songs',
+      public: false,
+      itemModel: 'Track',
+    });
+    this.collections.tracks = likedSongs._id;
+    // Create following albums collection
 
-// // First time User is created
-// UserSchema.pre('save', async function (next) {
-//   this._wasNew = this.isNew;
-//   // Validation to differentiate between created & updated
-//   if (!this.isNew) next();
+    // Create following artists collection
+    const followingArtists = await Collection.create({
+      type: 'track',
+      name: 'Following Artists',
+      public: false,
+      itemModel: 'Artist',
+    });
+    this.collections.artists = followingArtists._id;
 
-//   // Check if email is already in use
-//   const emailExists = await this.model('User').exists({ email: this.email });
-//   if (emailExists) {
-//     throw new ErrorResponse(400, 'Email is already in use');
-//   }
-
-//   // Generate encrypted password using bcryptjs
-//   const salt = await bcrypt.genSalt(10);
-//   this.password = await bcrypt.hash(this.password, salt);
-
-//   // Generate username
-//   let generatedUsername;
-//   let usernameExists = true;
-//   // It checks if generated username already exists
-//   // Usually run once but to certainly avoid duplicates
-//   while (usernameExists) {
-//     generatedUsername = generateUsername(this.name);
-//     usernameExists = await this.model('User').exists({
-//       username: generatedUsername,
-//     });
-//   }
-//   this.username = generatedUsername;
-
-//   // Create SocketUser
-//   const socketUser = await SocketUser.create({ user: this._id });
-//   this.socketId = socketUser._id;
-
-//   next();
-// });
-
-// UserSchema.post('save', async function (doc) {
-//   if (!this._wasNew) {
-//     return;
-//   }
-
-//   // Generate follow schema
-//   await this.model('Follow').create({
-//     user: doc._id,
-//   });
-// });
+    // Create following playlists collection
+    const followingPlaylists = await Collection.create({
+      type: 'playlist',
+      name: 'Following Playlists',
+      public: false,
+      itemModel: 'Collection',
+    });
+    this.collections.playlists = followingPlaylists._id;
+  }
+  next();
+});
 
 UserSchema.statics.encryptPassword = async function (password) {
   const salt = await bcrypt.genSalt(10);
@@ -128,11 +119,13 @@ UserSchema.methods.getSignedJwtToken = function () {
     name: this.name,
     fullname: this.fullname,
     access: this.access,
+    collections: this.collections,
   };
+  const expiresIn = parseInt(process.env.JWT_EXPIRE);
   const accessToken = jwt.sign(userJWT, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE,
+    expiresIn,
   });
-  return { userJWT, accessToken };
+  return { userJWT, accessToken, exp: new Date().valueOf() + expiresIn };
 };
 
 // Match user entered password to hashed password in database
@@ -140,12 +133,9 @@ UserSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-UserSchema.statics.findByJWT = function (token, cb) {
-  jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
-    if (err) throw new ErrorResponse(401, 'Invalid RefreshToken');
-    const user = await this.findById(decoded.uid);
-    cb(user);
-  });
+UserSchema.statics.findByJWT = async function (token) {
+  const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  return await this.findById(decoded.uid);
 };
 
 module.exports = mongoose.model('User', UserSchema);

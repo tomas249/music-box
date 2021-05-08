@@ -18,9 +18,10 @@
  *
  */
 const errorHandler = (err, req, res, next) => {
-  res
-    .status(err.statusCode || 500)
-    .send({ message: err.message.replace(/\r?\n|\r/g, '') || 'Server Error' });
+  res.status(err.statusCode || 500).send({
+    code: err.errorCode,
+    message: err.message.replace(/\r?\n|\r/g, '') || 'Server Error',
+  });
 };
 
 module.exports = errorHandler;

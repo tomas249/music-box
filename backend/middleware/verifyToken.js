@@ -7,6 +7,7 @@ module.exports = (opt = {}) =>
     // Check refresh token
     const refreshToken = req.signedCookies['refresh-token'];
     if (!refreshToken) throw new ErrorResponse(401, 'RefreshToken no provided');
+    req.refreshToken = refreshToken;
 
     // Get access token
     const rawHeader = req.header('Authorization');
@@ -15,7 +16,7 @@ module.exports = (opt = {}) =>
 
     // Verify access token
     jwt.verify(accessToken, process.env.JWT_SECRET, (err, decoded) => {
-      if (err) throw new ErrorResponse(401, 'Invalid AccessToken');
+      if (err) throw new ErrorResponse(401, 'Invalid AccessToken', err.name);
       // Check authorization
       const isBypassed = decoded.access.bypass && opt.acceptBypass;
       if (!decoded.access.allow && !isBypassed)

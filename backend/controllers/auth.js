@@ -73,9 +73,23 @@ exports.confirmInvitation = asyncHandler(async (req, res) => {
   let names = fullname.slice(0, -1);
 
   // Validate invitation key
-  const invitation = await InvitationKey.findOne({ _id: keyId });
-  const guest = invitation.validNames.filter((gName) => names.includes(gName));
-  if (!guest.length) throw new ErrorResponse(400, 'Your name is not on the guest list');
+  const invitation = await InvitationKey.findById(keyId);
+  let usedName;
+  const inGuestList = invitation.validNames.some((gName) => {
+    if (names.includes(gName)) {
+      usedName = gName;
+      return true;
+    } else {
+      return false;
+    }
+  });
+  if (!inGuestList) throw new ErrorResponse(400, 'Your name is not on the guest list');
+
+  // Mark invitation as activated
+  await InvitationKey.findByIdAndUpdate(keyId, {
+    $push: { activatedBy: fullname.join(' ') },
+    $pull: { validNames: usedName },
+  });
 
   // Create default user and generate tokens
   const user = await createDefaultUser({
@@ -90,6 +104,7 @@ exports.confirmInvitation = asyncHandler(async (req, res) => {
       maxAge: 60 * 60 * 24 * 30,
       httpOnly: true,
       signed: true,
+      sameSite: true,
     })
     .send({
       accessToken,
@@ -122,9 +137,11 @@ exports.changePassword = asyncHandler(async (req, res) => {
       maxAge: 60 * 60 * 24 * 30,
       httpOnly: true,
       signed: true,
+      sameSite: true,
     })
     .send({
       accessToken,
+
       user: userJWT,
     });
 });
@@ -151,9 +168,10 @@ exports.login = asyncHandler(async (req, res) => {
   const refreshToken = await generateRefreshToken(req, user._id);
   res
     .cookie('refresh-token', refreshToken, {
-      maxAge: 60 * 60 * 24 * 30,
+      maxAge: 1000 * 60 * 60 * 24 * 30,
       httpOnly: true,
       signed: true,
+      sameSite: true,
     })
     .send({
       accessToken,
@@ -187,10 +205,11 @@ exports.identify = asyncHandler(async (req, res) => {
   const refreshToken = req.signedCookies['refresh-token'];
   if (!refreshToken) return res.send({ user: null, accessToken: null });
 
-  User.findByJWT(refreshToken, (user) => {
-    const { userJWT, accessToken } = user.getSignedJwtToken();
-    res.send({ user: userJWT, accessToken });
-  });
+  const user = await User.findByJWT(refreshToken);
+  if (!user) throw new ErrorResponse(400, 'Invalid User');
+
+  const { userJWT, accessToken } = user.getSignedJwtToken();
+  res.send({ user: userJWT, accessToken });
 });
 
 const createDefaultUser = async ({ user, host }) => {
@@ -223,13 +242,17 @@ const createDefaultUser = async ({ user, host }) => {
       },
     });
   } catch (err) {
-    console.log(err);
     if (err.code === 11000) throw new ErrorResponse(400, 'Invitation already confirmed');
     else throw new ErrorResponse(400, err);
   }
 };
 
 const generateRefreshToken = async (req, uid) => {
+  // Remove previous RefreshToken
+  if (req.refreshToken) {
+    await RefreshToken.findOneAndDelete({ token: req.refreshToken });
+  }
+
   // Create RefreshToken's title
   sniff.sniff(req.headers['user-agent']);
   const usedOS = sniff.os.name[0].toUpperCase() + sniff.os.name.slice(1);

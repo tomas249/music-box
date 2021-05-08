@@ -2,12 +2,20 @@ const mongoose = require('mongoose');
 
 const ArtistSchema = new mongoose.Schema({
   name: String,
-  ytId: String,
+  ytId: {
+    type: String,
+    required: true,
+    index: true,
+  },
   ytUrl: String,
-  songs: [
+  image: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'images.files',
+  },
+  tracks: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Song',
+      ref: 'Track',
     },
   ],
   albums: [

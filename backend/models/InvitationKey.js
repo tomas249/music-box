@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
 
 const InvitationKeySchema = new mongoose.Schema({
-  key: String,
-  timesActivated: {
-    type: Number,
-    default: 0,
+  key: {
+    type: String,
+    unique: true,
   },
+  activatedBy: [String],
   host: {
     name: String,
     fullname: String,

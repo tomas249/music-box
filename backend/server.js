@@ -10,20 +10,21 @@ const routes = require('./routes');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser('mySecrect'));
-// var whitelist = ['http://localhost:3000', 'http://example2.com'];
-// var corsOptions = {
-//   origin: function (origin, callback) {
-//     if (whitelist.indexOf(origin) !== -1) {
-//       callback(null, true);
-//     } else {
-//       callback('not allowed by cors');
-//     }
-//   },
-//   credentials: true,
-// };
-app.use(cors({ credentials: true, origin: 'http://localhost:3000' }));
+const whitelist = ['http://localhost:3000', '0.0.0.0'];
+const corsOptions = {
+  origin: true,
+  credentials: true,
+};
+app.use(cors(corsOptions));
+
 // Routes
 app.use('/api/v1', routes);
 
+const reactBuildPath = path.join(__dirname, '..', 'frontend', 'build');
+app.use(express.static(reactBuildPath));
+app.get('**', (req, res) => {
+  res.sendFile(path.join(reactBuildPath, 'index.html'));
+});
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, console.log(`Server running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', console.log(`Server running on port ${PORT}`));

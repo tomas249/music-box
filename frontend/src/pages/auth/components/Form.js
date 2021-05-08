@@ -7,7 +7,7 @@ const Form = ({ children, handleSubmit, goBack = false, backValue = 'back', subm
       {children}
       <div style={{ display: 'flex' }}>
         {goBack && (
-          <Button type="button" value={backValue} flex="1" textAlign="right" handleClick={goBack} />
+          <Button type='button' value={backValue} flex='1' textAlign='right' handleClick={goBack} />
         )}
         <Button
           value={submitValue}

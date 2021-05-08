@@ -1,57 +1,30 @@
-import { useEffect, useState, Suspense, lazy } from 'react';
+import { Suspense, lazy, useContext } from 'react';
 import { Redirect } from 'react-router-dom';
-import * as authApi from './api/authApi';
 
-const App = (props) => {
-  const [loading, setLoading] = useState(true);
-  const [accessToken, setAccessToken] = useState();
-  const [user, setUser] = useState();
+import { UserContext } from './contexts/UserContext';
 
+const App = () => {
   const AuthRouter = lazy(() => import('./pages/auth/AuthRouter'));
-  const MainRouter = lazy(() => import('./pages/main/MainRouter'));
+  const MainPage = lazy(() => import('./pages/main/MainPage'));
+  const { user } = useContext(UserContext);
 
-  const setSession = (session) => {
-    setAccessToken(session.accessToken);
-    setUser(session.user);
-  };
-
-  useEffect(() => {
-    authApi
-      .identify()
-      .then((res) => {
-        setAccessToken(res.accessToken);
-        setUser(res.user);
-      })
-      .catch((err) => {
-        console.error(err);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return null;
+  // User exists and access allowed
+  if (user.access.allow) {
+    return (
+      <Suspense fallback={null}>
+        <MainPage />
+      </Suspense>
+    );
   } else {
-    if (!user || !user.access.allow) {
-      return (
-        <Suspense fallback={null}>
-          {user?.access.reason === 'setup_account' && (
-            <Redirect
-              to={{
-                pathname: '/auth',
-                state: { useFragment: 'setupAccount', user },
-              }}
-            />
-          )}
-          <AuthRouter setSession={setSession} token={accessToken} />
-        </Suspense>
-      );
-    } else {
-      return (
-        <Suspense fallback={null}>
-          <MainRouter user={user} />
-        </Suspense>
-      );
-    }
+    return (
+      <Suspense fallback={null}>
+        {/* Redirect to change account if required */}
+        {user?.access.reason === 'setup_account' && (
+          <Redirect to={{ pathname: '/auth', state: { initFragment: 'changePwd' } }} />
+        )}
+        <AuthRouter />
+      </Suspense>
+    );
   }
 };
 
