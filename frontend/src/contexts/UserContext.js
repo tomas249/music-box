@@ -1,7 +1,7 @@
-import { useState, useEffect, createContext } from 'react';
-import { identify } from '../api/AuthApi';
-import { setBearerToken } from '../api/Api';
-import LoadingComponent from '../components/LoadingComponent';
+import { useState, useEffect, createContext } from "react";
+import { identify } from "../api/AuthApi";
+import { setBearerToken } from "../api/Api";
+import LoadingComponent from "../components/LoadingComponent";
 
 const UserContext = createContext();
 
